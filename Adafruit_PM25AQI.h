@@ -20,11 +20,10 @@
 #ifndef ADAFRUIT_PM25AQI_H
 #define ADAFRUIT_PM25AQI_H
 
-#include "Arduino.h"
-#include <Adafruit_I2CDevice.h>
+#include "stm32f4xx_hal.h"
 
-// the i2c address
-#define PMSA003I_I2CADDR_DEFAULT 0x12 ///< PMSA003I has only one I2C address
+// the i2c address (left-shifted by 1 bit for STM32 HAL api)
+#define PMSA003I_I2CADDR_DEFAULT (0x12 << 1) ///< PMSA003I has only one I2C address
 
 /**! Structure holding Plantower's standard packet **/
 typedef struct PMSAQIdata {
@@ -49,16 +48,14 @@ typedef struct PMSAQIdata {
  *  @brief  Class that stores state and functions for interacting with
  *          PM2.5 Air Quality Sensor
  */
-class Adafruit_PM25AQI {
-public:
-  Adafruit_PM25AQI();
-  bool begin_I2C(TwoWire *theWire = &Wire);
-  bool begin_UART(Stream *theStream);
-  bool read(PM25_AQI_Data *data);
 
-private:
-  Adafruit_I2CDevice *i2c_dev = NULL;
-  Stream *serial_dev = NULL;
+bool Adafruit_PM25AQI_init_I2C(Adafruit_PM25AQI* pm25aqi, I2C_HandleTypeDef *hi2c);
+bool Adafruit_PM25AQI_init_UART(Adafruit_PM25AQI* pm25aqi, UART_HandleTypeDef *huart);
+bool Adafruit_PM25AQI_read(Adafruit_PM25AQI *pm25aqi, PM25_AQI_Data *data);
+
+struct Adafruit_PM25AQI {
+  I2C_HandleTypeDef *hi2c = NULL;
+  UART_HandleTypeDef *huart = NULL;
   uint8_t _readbuffer[32];
 };
 

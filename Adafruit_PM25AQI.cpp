@@ -23,13 +23,7 @@
  * BSD license, all text here must be included in any redistribution.
  *
  */
-
 #include "Adafruit_PM25AQI.h"
-
-/*!
- *  @brief  Instantiates a new PM25AQI class
- */
-Adafruit_PM25AQI::Adafruit_PM25AQI() {}
 
 /*!
  *  @brief  Setups the hardware and detects a valid PMSA003I. Initializes I2C.
@@ -37,14 +31,15 @@ Adafruit_PM25AQI::Adafruit_PM25AQI() {}
  *          Optional pointer to I2C interface, otherwise use Wire
  *  @return True if PMSA003I found on I2C, False if something went wrong!
  */
-bool Adafruit_PM25AQI::begin_I2C(TwoWire *theWire) {
-  if (!i2c_dev) {
-    i2c_dev = new Adafruit_I2CDevice(PMSA003I_I2CADDR_DEFAULT, theWire);
-  }
-
-  if (!i2c_dev->begin()) {
+bool Adafruit_PM25AQI_init_I2C(Adafruit_PM25AQI* pm25aqi, I2C_HandleTypeDef *hi2c) {
+  if (!pm25aqi) {
     return false;
   }
+  if (!hi2c) {
+    return false;
+  }
+
+  pm25aqi->hi2c = hi2c;
 
   return true;
 }
@@ -55,8 +50,15 @@ bool Adafruit_PM25AQI::begin_I2C(TwoWire *theWire) {
  *          Pointer to Stream (HardwareSerial/SoftwareSerial) interface
  *  @return True
  */
-bool Adafruit_PM25AQI::begin_UART(Stream *theSerial) {
-  serial_dev = theSerial;
+bool Adafruit_PM25AQI_init_UART(Adafruit_PM25AQI* pm25aqi, UART_HandleTypeDef *huart) {
+  if (!pm25aqi) {
+    return false;
+  }
+  if (!huart) {
+    return false;
+  }
+
+  pm25aqi->huart = huart;
 
   return true;
 }
@@ -67,7 +69,7 @@ bool Adafruit_PM25AQI::begin_UART(Stream *theSerial) {
  *          Pointer to PM25_AQI_Data that will be filled by read()ing
  *  @return True on successful read, false if timed out or bad data
  */
-bool Adafruit_PM25AQI::read(PM25_AQI_Data *data) {
+bool Adafruit_PM25AQI_read(Adafruit_PM25AQI *pm25aqi, PM25_AQI_Data *data) {
   uint8_t buffer[32];
   uint16_t sum = 0;
 
@@ -75,31 +77,31 @@ bool Adafruit_PM25AQI::read(PM25_AQI_Data *data) {
     return false;
   }
 
-  if (i2c_dev) { // ok using i2c?
-    if (!i2c_dev->read(buffer, 32)) {
+  if (pm25aqi->hi2c) { // ok using i2c?
+    if (HAL_OK != HAL_I2C_Mem_Read(pm25aqi->hi2c, PMSA003I_I2CADDR_DEFAULT, 0, 32, buffer, 32, 50)) {
       return false;
     }
-  } else if (serial_dev) { // ok using uart
-    if (!serial_dev->available()) {
-      return false;
-    }
-    int skipped = 0;
-    while ((skipped < 32) && (serial_dev->peek() != 0x42)) {
-      serial_dev->read();
-      skipped++;
-      if (!serial_dev->available()) {
-        return false;
-      }
-    }
-    if (serial_dev->peek() != 0x42) {
-      serial_dev->read();
-      return false;
-    }
-    // Now read all 32 bytes
-    if (serial_dev->available() < 32) {
-      return false;
-    }
-    serial_dev->readBytes(buffer, 32);
+  } else if (pm25aqi->huart) { // ok using uart
+    //if (!serial_dev->available()) {
+    //  return false;
+    //}
+    //int skipped = 0;
+    //while ((skipped < 32) && (serial_dev->peek() != 0x42)) {
+    //  serial_dev->read();
+    //  skipped++;
+    //  if (!serial_dev->available()) {
+    //    return false;
+    //  }
+    //}
+    //if (serial_dev->peek() != 0x42) {
+    //  serial_dev->read();
+    //  return false;
+    //}
+    //// Now read all 32 bytes
+    //if (serial_dev->available() < 32) {
+    //  return false;
+    //}
+    //serial_dev->readBytes(buffer, 32);
   } else {
     return false;
   }
